@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thiru Storage</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0c0c0c;
+      --surface: #141414;
+      --card:    #1a1a1a;
+      --border:  #2a2a2a;
+      --accent:  #e8ff47;
+      --accent2: #ff4747;
+      --text:    #f0f0f0;
+      --muted:   #555;
+      --mono:    'Space Mono', monospace;
+      --display: 'Bebas Neue', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: rgba(12,12,12,0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+    .logo { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.08em; color: var(--accent); }
+    .logo span { color: var(--text); }
+    .status-dot { display: flex; align-items: center; gap: 0.5rem; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+    .dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+    /* HERO */
+    .hero {
+      padding: 4rem 2rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: 'VIDEOS';
+      position: absolute; right: -0.5rem; top: 50%; transform: translateY(-50%);
+      font-family: var(--display);
+      font-size: clamp(6rem, 18vw, 14rem);
+      color: rgba(255,255,255,0.025);
+      pointer-events: none; user-select: none; white-space: nowrap;
+    }
+    .hero h1 { font-family: var(--display); font-size: clamp(3rem, 9vw, 7rem); line-height: 0.9; }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero-meta { margin-top: 1.2rem; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); display: flex; gap: 2rem; flex-wrap: wrap; }
+    .hero-meta span { color: var(--accent); }
+
+    /* TOOLBAR */
+    .toolbar { padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 0.78rem;
+      padding: 0.6rem 0.9rem 0.6rem 2.2rem; outline: none; transition: border-color 0.2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-icon { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; }
+    #count-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+    #count-label span { color: var(--accent); }
+    .copy-all-btn {
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      padding: 0.6rem 1.1rem; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .copy-all-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-all-btn.copied { color: #4dff91; border-color: #4dff91; }
+
+    /* EXT FILTER */
+    .ext-wrap {
+      position: relative; flex: 1; min-width: 200px;
+    }
+    .ext-wrap input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      color: var(--accent); font-family: var(--mono); font-size: 0.78rem;
+      padding: 0.6rem 0.9rem 0.6rem 2.2rem; outline: none; transition: border-color 0.2s;
+    }
+    .ext-wrap input:focus { border-color: var(--accent); }
+    .ext-wrap input::placeholder { color: var(--muted); font-size: 0.72rem; }
+    .ext-icon { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.8rem; }
+
+    .ext-tags {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      padding: 0 2rem 0.6rem;
+    }
+    .ext-tag {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 8px;
+      background: rgba(232,255,71,0.08); color: var(--accent);
+      border: 1px solid rgba(232,255,71,0.3);
+      display: flex; align-items: center; gap: 5px;
+      animation: fadeIn 0.15s forwards;
+    }
+    .ext-tag button {
+      background: none; border: none; color: var(--accent); cursor: pointer;
+      font-size: 0.7rem; padding: 0; line-height: 1; opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    .ext-tag button:hover { opacity: 1; }
+
+    /* GRID */
+    main { padding: 1.5rem 2rem 4rem; position: relative; z-index: 1; }
+    #video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1px; background: var(--border); border: 1px solid var(--border);
+    }
+
+    /* CARD */
+    .video-card {
+      background: var(--card);
+      display: flex; flex-direction: column;
+      opacity: 0; transform: translateY(10px);
+      animation: fadeIn 0.3s forwards;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .video-card:hover { background: #1f1f1f; }
+    @keyframes fadeIn { to { opacity:1; transform:translateY(0); } }
+
+    .thumb-area {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      background: #0a0a0a; overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    .thumb-area video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .play-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.45); transition: background 0.2s;
+    }
+    .video-card:hover .play-overlay { background: rgba(0,0,0,0.2); }
+    .play-btn-circle {
+      width: 54px; height: 54px; border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .video-card:hover .play-btn-circle { transform: scale(1.1); background: #f5ff7a; }
+    .play-btn-circle svg { margin-left: 4px; }
+
+    .card-body { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .card-title-row { display: flex; align-items: flex-start; gap: 0.6rem; }
+    .vid-name { flex: 1; font-size: 0.82rem; font-weight: 700; line-height: 1.3; word-break: break-word; color: var(--text); }
+    .vid-ext {
+      display: inline-block; font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase; padding: 2px 6px;
+      background: rgba(232,255,71,0.12); color: var(--accent);
+      border: 1px solid rgba(232,255,71,0.25); flex-shrink: 0; margin-top: 2px;
+    }
+    .vid-size { font-size: 0.65rem; color: var(--muted); }
+    .url-row { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+    .url-text { flex: 1; font-size: 0.58rem; color: var(--muted); padding: 0.4rem 0.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); user-select: all; }
+    .copy-btn {
+      font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: var(--accent); color: #0c0c0c; border: none;
+      padding: 0.4rem 0.8rem; cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s; min-width: 62px;
+    }
+    .copy-btn:hover { background: #f5ff7a; }
+    .copy-btn.copied { background: #4dff91; }
+
+    /* ═══════════════════════════════
+       MODAL — fits 75vh screen height
+    ═══════════════════════════════ */
+    #modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+      backdrop-filter: blur(6px);
+    }
+    #modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+    .modal-box {
+      width: 100%;
+      /* total modal = header (~48px) + video (auto) + footer (~52px)
+         video is sized to fill ~75vh, so modal naturally fits */
+      max-width: min(95vw, calc(75vh * 16 / 9 + 20px));
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      transform: scale(0.95);
+      transition: transform 0.25s;
+    }
+    #modal-backdrop.open .modal-box { transform: scale(1); }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-title {
+      font-size: 0.8rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: calc(100% - 110px);
+    }
+    .modal-close {
+      font-family: var(--mono); font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.75rem; cursor: pointer;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .modal-close:hover { color: var(--accent2); border-color: var(--accent2); }
+
+    /* VIDEO — max 75vh tall, width follows aspect ratio */
+    .modal-video-wrap {
+      position: relative;
+      width: 100%;
+      background: #000;
+      /* height driven by the video element below */
+    }
+    #modal-video {
+      display: block;
+      width: 100%;
+      max-height: 75vh;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .modal-footer {
+      padding: 0.75rem 1.2rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.7rem;
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+    .modal-url { flex: 1; font-size: 0.6rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
+    .modal-copy-btn {
+      font-family: var(--mono); font-size: 0.66rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: var(--accent); color: #0c0c0c; border: none;
+      padding: 0.45rem 1rem; cursor: pointer; transition: background 0.15s; flex-shrink: 0;
+    }
+    .modal-copy-btn:hover { background: #f5ff7a; }
+    .modal-copy-btn.copied { background: #4dff91; }
+
+    /* STATES */
+    .state-screen {
+      grid-column: 1 / -1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 40vh; gap: 1rem; color: var(--muted); font-size: 0.78rem;
+      letter-spacing: 0.08em; background: var(--card);
+    }
+    .state-screen .big { font-size: 3rem; }
+    .loader { display: flex; gap: 4px; }
+    .loader span { width: 4px; height: 24px; background: var(--accent); animation: bar 0.9s ease-in-out infinite; }
+    .loader span:nth-child(2){animation-delay:0.15s} .loader span:nth-child(3){animation-delay:0.3s} .loader span:nth-child(4){animation-delay:0.45s}
+    @keyframes bar { 0%,100%{transform:scaleY(0.3);opacity:0.4} 50%{transform:scaleY(1);opacity:1} }
+    .err-msg { color: var(--accent2); font-size: 0.7rem; text-align: center; max-width: 400px; line-height: 1.6; }
+    .retry-btn {
+      font-family: var(--mono); font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      background: transparent; color: var(--accent); border: 1px solid var(--accent);
+      padding: 0.6rem 1.4rem; cursor: pointer; margin-top: 0.5rem; transition: all 0.15s;
+    }
+    .retry-btn:hover { background: var(--accent); color: #0c0c0c; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border); padding: 1.2rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); flex-wrap: wrap; gap: 0.5rem;
+      position: relative; z-index: 1;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .hero { padding: 2.5rem 1rem 1.5rem; }
+      main { padding: 1rem 1rem 3rem; }
+      .topbar, .toolbar, footer { padding-left: 1rem; padding-right: 1rem; }
+      #video-grid { grid-template-columns: 1fr; }
+      #modal-video { max-height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">GT<span>.</span>VIDEO</div>
+  <div class="status-dot"><div class="dot"></div>Live</div>
+</div>
+
+<section class="hero">
+  <h1>Video<br/><em>Storage</em></h1>
+  <div class="hero-meta">
+    Org: <span>Thiru Storage</span>
+    &nbsp;·&nbsp; Repo: <span>Video_Storage</span>
+    &nbsp;·&nbsp; Folder: <span>/videos</span>
+  </div>
+</section>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search" placeholder="Search videos..." oninput="filterCards()"/>
+  </div>
+  <div class="ext-wrap">
+    <span class="ext-icon">🏷</span>
+    <input type="text" id="ext-input" placeholder=".mp4, .mp3, .gif  — press Enter or comma to add" onkeydown="handleExtKey(event)"/>
+  </div>
+  <div id="count-label">Loading...</div>
+  <button class="copy-all-btn" id="copy-all-btn" onclick="copyAll()">Copy All Links</button>
+</div>
+<div class="ext-tags" id="ext-tags"></div>
+
+<main>
+  <div id="video-grid">
+    <div class="state-screen">
+      <div class="loader"><span></span><span></span><span></span><span></span></div>
+      <div>Fetching videos from GitHub...</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>© Thiru Storage</div>
+  <a href="https://github.com/editorthiru/storage/" target="_blank" rel="noopener">
+    github.com/editorthiru/storage
+  </a>
+</footer>
+
+<!-- MODAL -->
+<div id="modal-backdrop" onclick="handleBackdropClick(event)">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">—</div>
+      <button class="modal-close" onclick="closeModal()">✕ Close</button>
+    </div>
+    <div class="modal-video-wrap">
+      <video id="modal-video" controls preload="metadata"></video>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-url" id="modal-url"></div>
+      <button class="modal-copy-btn" id="modal-copy-btn" onclick="copyModalLink()">Copy Raw Link</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://api.github.com/repos/editorthiru/storage/contents/data?ref=main';
+  let allItems = [];
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  async function loadVideos() {
+    const grid = document.getElementById('video-grid');
+    grid.innerHTML = `<div class="state-screen">
+      <div class="loader"><span></span><span></span><span></span><span></span></div>
+      <div>Fetching videos from GitHub...</div>
+    </div>`;
+
+    try {
+      const res = await fetch(API_URL);
+      if (res.status === 403) throw new Error('GitHub API rate limit reached (60/hr). Please wait a moment and refresh.');
+      if (res.status === 404) throw new Error('Folder not found. Make sure the repo is public and /videos exists.');
+      if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+      const data = await res.json();
+      const files = data.filter(i => i.type === 'file');
+
+      if (files.length === 0) {
+        grid.innerHTML = `<div class="state-screen"><div class="big">📭</div><div>No files found in /videos</div></div>`;
+        document.getElementById('count-label').innerHTML = '<span>0</span> files';
+        return;
+      }
+
+      allItems = files;
+      renderCards(files);
+    } catch (err) {
+      grid.innerHTML = `<div class="state-screen">
+        <div class="big">⚠</div>
+        <div class="err-msg">${err.message}</div>
+        <button class="retry-btn" onclick="loadVideos()">Retry</button>
+      </div>`;
+      document.getElementById('count-label').textContent = 'Error';
+    }
+  }
+
+  function renderCards(items) {
+    const grid  = document.getElementById('video-grid');
+    const label = document.getElementById('count-label');
+    label.innerHTML = `<span>${items.length}</span> video${items.length !== 1 ? 's' : ''}`;
+
+    if (items.length === 0) {
+      grid.innerHTML = `<div class="state-screen"><div>No results found</div></div>`;
+      return;
+    }
+
+    grid.innerHTML = items.map((item, i) => {
+      const rawUrl = item.download_url;
+      const ext    = item.name.split('.').pop().toLowerCase();
+      const size   = formatSize(item.size);
+      const delay  = Math.min(i * 60, 600);
+      const safe   = rawUrl.replace(/'/g, "\\'");
+      const safeName = item.name.replace(/'/g, "\\'");
+
+      return `
+        <div class="video-card" style="animation-delay:${delay}ms" data-name="${item.name.toLowerCase()}"
+             onclick="openModal('${safe}','${safeName}')">
+          <div class="thumb-area">
+            <video src="${rawUrl}#t=1" preload="metadata" muted playsinline></video>
+            <div class="play-overlay">
+              <div class="play-btn-circle">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <polygon points="5,3 18,10 5,17" fill="#0c0c0c"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <div class="vid-name">${item.name}</div>
+              <span class="vid-ext">${ext}</span>
+            </div>
+            ${size ? `<div class="vid-size">${size}</div>` : ''}
+            <div class="url-row" onclick="event.stopPropagation()">
+              <div class="url-text" title="${rawUrl}">${rawUrl}</div>
+              <button class="copy-btn" id="cbtn-${i}"
+                onclick="event.stopPropagation(); copyLink('${safe}', 'cbtn-${i}')">Copy</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ── EXTENSION FILTER ── */
+  let activeExts = [];
+
+  function handleExtKey(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitExtInput();
+    } else if (e.key === 'Backspace') {
+      const input = document.getElementById('ext-input');
+      if (input.value === '' && activeExts.length) {
+        activeExts.pop();
+        renderExtTags();
+        filterCards();
+      }
+    }
+  }
+
+  function commitExtInput() {
+    const input = document.getElementById('ext-input');
+    const raw = input.value.trim();
+    if (!raw) return;
+    raw.split(',').forEach(part => {
+      let ext = part.trim().toLowerCase().replace(/^\.+/, '');
+      if (ext && !activeExts.includes(ext)) activeExts.push(ext);
+    });
+    input.value = '';
+    renderExtTags();
+    filterCards();
+  }
+
+  function removeExt(ext) {
+    activeExts = activeExts.filter(e => e !== ext);
+    renderExtTags();
+    filterCards();
+  }
+
+  function renderExtTags() {
+    const container = document.getElementById('ext-tags');
+    container.innerHTML = activeExts.map(ext => `
+      <div class="ext-tag">
+        .${ext}
+        <button onclick="removeExt('${ext}')" title="Remove">✕</button>
+      </div>`).join('');
+  }
+
+  function filterCards() {
+    const q    = document.getElementById('search').value.toLowerCase().trim();
+    let result = allItems;
+    if (activeExts.length) {
+      result = result.filter(v => {
+        const fileExt = v.name.split('.').pop().toLowerCase();
+        return activeExts.includes(fileExt);
+      });
+    }
+    if (q) result = result.filter(v => v.name.toLowerCase().includes(q));
+    renderCards(result);
+  }
+
+  function copyLink(url, btnId) {
+    doCopy(url, document.getElementById(btnId));
+  }
+
+  function doCopy(url, btn) {
+    navigator.clipboard.writeText(url).then(() => flash(btn)).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      flash(btn);
+    });
+  }
+
+  function flash(btn) {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+  }
+
+  function copyAll() {
+    const btn = document.getElementById('copy-all-btn');
+    if (!allItems.length) return;
+    const links = allItems.map(v => v.download_url).join('\n');
+    navigator.clipboard.writeText(links).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied All!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  /* MODAL */
+  function openModal(url, name) {
+    document.getElementById('modal-title').textContent = name;
+    document.getElementById('modal-url').textContent   = url;
+    document.getElementById('modal-url').title         = url;
+    const video = document.getElementById('modal-video');
+    video.src = url;
+    video.load();
+    document.getElementById('modal-backdrop').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    const video = document.getElementById('modal-video');
+    video.pause();
+    video.src = '';
+    document.getElementById('modal-backdrop').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleBackdropClick(e) {
+    if (e.target === document.getElementById('modal-backdrop')) closeModal();
+  }
+
+  function copyModalLink() {
+    const url = document.getElementById('modal-url').textContent;
+    doCopy(url, document.getElementById('modal-copy-btn'));
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  loadVideos();
+</script>
+</body>
+</html>
